@@ -1,6 +1,8 @@
 package io.github.awornl;
 
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Preferences;
 
 public class GameState {
 
@@ -139,7 +141,7 @@ public class GameState {
         cookies += bonus;
         totalCookiesEarned += bonus;
         goldenCookie.visible = false;
-        floatingTexts.add(new FloatingText("FRENZY! x7 for 30s!", 
+        floatingTexts.add(new FloatingText("FRENZY! x7 for 30s!",
             goldenCookie.x, goldenCookie.y + 40, true));
     }
 
@@ -189,5 +191,46 @@ public class GameState {
         if (actual < 1000) return String.format("%.1f", actual);
         if (actual < 1_000_000) return String.format("%.1fK", actual / 1000.0);
         return String.format("%.2fM", actual / 1_000_000.0);
+    }
+
+    Preferences prefs = Gdx.app.getPreferences("cookie_save");
+
+    public void save() {
+        prefs.putLong("cookies", cookies);
+        prefs.putLong("totalCookiesEarned", totalCookiesEarned);
+        prefs.putLong("cookiesPerClick", cookiesPerClick);
+
+        prefs.putInteger("prestigeLevel", prestigeLevel);
+        prefs.putFloat("prestigeBonus", prestigeBonus);
+
+        for (int i = 0; i < buildings.length; i++) {
+            prefs.putInteger("building_count_" + i, buildings[i].count);
+            prefs.putLong("building_cost_" + i, buildings[i].currentCost);
+        }
+
+        prefs.flush();
+    }
+
+    public void load() {
+        cookies = prefs.getLong("cookies", 0);
+        totalCookiesEarned = prefs.getLong("totalCookiesEarned", 0);
+        cookiesPerClick = prefs.getLong("cookiesPerClick", 1);
+
+        prestigeLevel = prefs.getInteger("prestigeLevel", 0);
+        prestigeBonus = prefs.getFloat("prestigeBonus", 1f);
+
+        for (int i = 0; i < buildings.length; i++) {
+            buildings[i].count =
+                prefs.getInteger("building_count_" + i, 0);
+
+            buildings[i].currentCost =
+                prefs.getLong(
+                    "building_cost_" + i,
+                    buildings[i].baseCost
+                );
+        }
+
+        updateCps();
+        updateClickPower();
     }
 }

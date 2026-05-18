@@ -23,6 +23,7 @@ public class Renderer {
 
     TextureRegion starsRegion;
     float         starsScrollV = 0f;
+    com.badlogic.gdx.graphics.Texture whitePx;
 
     float cookiePulseTimer = 0f;
 
@@ -41,6 +42,12 @@ public class Renderer {
         assets.bgStars.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
 
         starsRegion = new TextureRegion(assets.bgStars);
+
+        com.badlogic.gdx.graphics.Pixmap px = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        px.setColor(1, 1, 1, 1);
+        px.fill();
+        whitePx = new com.badlogic.gdx.graphics.Texture(px);
+        px.dispose();
     }
 
     public void setInputHandler(InputHandler h) { this.inputHandler = h; }
@@ -66,6 +73,7 @@ public class Renderer {
         drawGoldenCookie();
         drawMilestonePopup();
         drawFrenzyOverlay();
+        drawPauseButton();
     }
 
     void drawBackground() {
@@ -227,18 +235,24 @@ public class Renderer {
 
     void drawProgressBar(float x, float y, float w, float h, Building b) {
         long prevCost = b.count == 0
-            ? b.baseCost
+            ? 0L
             : (long)(b.baseCost * Math.pow(1.15, b.count - 1));
-        float progress = (b.currentCost > prevCost)
-            ? MathUtils.clamp(
-            (float)(gameState.cookies - prevCost) / (float)(b.currentCost - prevCost),
-            0f, 1f)
-            : 1f;
+        long nextCost = b.currentCost;
+        long range    = nextCost - prevCost;
+        float progress = 0f;
+        if (range > 0 && gameState.cookies < nextCost) {
+            progress = (float)(gameState.cookies - prevCost) / (float)range;
+            progress = MathUtils.clamp(progress, 0f, 1f);
+        } else if (gameState.cookies >= nextCost) {
+            progress = 1f;
+        }
 
         batch.setColor(0.14f, 0.1f, 0.2f, 1f);
         batch.draw(assets.progressBarBg, x, y, w, h);
-        batch.setColor(colGold);
-        batch.draw(assets.progressBarFill, x, y, w * progress, h);
+        if (progress > 0.01f) {
+            batch.setColor(colGold);
+            batch.draw(assets.progressBarFill, x, y, w * progress, h);
+        }
         batch.setColor(1, 1, 1, 1);
     }
 
@@ -251,14 +265,15 @@ public class Renderer {
         batch.draw(can ? assets.buttonNormal : assets.buttonLocked, r.x, r.y, r.width, r.height);
 
         batch.setColor(1, 1, 1, 1);
-        batch.draw(assets.prestige, r.x + 8f, r.y + 8f, 34f, 34f);
+        batch.draw(assets.prestige, r.x + 6f, r.y + 8f, 30f, 30f);
 
-        assets.fontSmall.setColor(can ? new Color(0.9f, 0.5f, 1f, 1f) : new Color(0.5f, 0.38f, 0.6f, 1f));
+        Color textColor = can ? new Color(0.9f, 0.5f, 1f, 1f) : new Color(0.5f, 0.38f, 0.6f, 1f);
+        assets.fontSmall.setColor(textColor);
         assets.fontSmall.draw(batch,
-            "PRESTIGE  (need " + gameState.formatCookies(gameState.getPrestigeCost()) + ")",
-            r.x + 48f, r.y + 33f);
+            "PRESTIGE (need " + gameState.formatCookies(gameState.getPrestigeCost()) + ")",
+            r.x + 42f, r.y + 33f);
         assets.fontSmall.setColor(colSilver);
-        assets.fontSmall.draw(batch, "Resets game  +25% permanent bonus", r.x + 48f, r.y + 14f);
+        assets.fontSmall.draw(batch, "Resets game, +25% permanent", r.x + 42f, r.y + 14f);
     }
 
     void drawParticles() {
@@ -346,5 +361,21 @@ public class Renderer {
         assets.fontBig.draw(batch, msg, worldW / 2f - 130f, worldH - 28f);
         assets.fontBig.getData().setScale(1f);
         assets.fontBig.setColor(Color.WHITE);
+    }
+
+    void drawPauseButton() {
+        if (inputHandler == null) return;
+        com.badlogic.gdx.math.Rectangle r = inputHandler.getPauseButton();
+        if (r == null) return;
+        float s = r.width;
+        batch.setColor(0.1f, 0.08f, 0.22f, 0.85f);
+        batch.draw(whitePx, r.x, r.y, s, s);
+        batch.setColor(colSilver);
+        float barW = 5f;
+        float barH = s * 0.45f;
+        float barY = r.y + (s - barH) / 2f;
+        batch.draw(whitePx, r.x + s * 0.28f, barY, barW, barH);
+        batch.draw(whitePx, r.x + s * 0.56f, barY, barW, barH);
+        batch.setColor(1, 1, 1, 1);
     }
 }

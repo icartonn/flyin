@@ -33,6 +33,8 @@ public class Assets {
     public Texture prestige;
     public Texture golden;
     public Texture goldenGlow;
+    public Texture sliderBg;
+    public Texture sliderKnob;
     public Texture[] sparkles;
 
     public BitmapFont fontSmall;
@@ -41,11 +43,17 @@ public class Assets {
     public BitmapFont fontTitle;
 
     public Sound clickNormal;
+    public Sound clickPop;
+    public Sound clickDing;
     public Sound clickCrit;
     public Sound buySound;
     public Sound milestoneSound;
     public Sound goldenSound;
     public Music bgMusic;
+
+    public float soundVolume = 0.7f;
+    public float musicVolume = 0.35f;
+    public int   clickSoundChoice = 0;
 
     public void loadAll() {
         AssetScaler.scaleAll();
@@ -74,6 +82,8 @@ public class Assets {
         prestige      = tex("prestige.png");
         golden        = tex("golden_cookie.png");
         goldenGlow    = tex("golden_glow.png");
+        sliderBg      = tex("slider_bg.png");
+        sliderKnob    = tex("slider_knob.png");
 
         sparkles = new Texture[4];
         sparkles[0] = tex("sparkle1.png");
@@ -92,6 +102,8 @@ public class Assets {
         fontTitle.getData().setScale(1f);
 
         clickNormal   = Gdx.audio.newSound(Gdx.files.internal("click.wav"));
+        clickPop      = Gdx.audio.newSound(Gdx.files.internal("click2.wav"));
+        clickDing     = Gdx.audio.newSound(Gdx.files.internal("click3.wav"));
         clickCrit     = Gdx.audio.newSound(Gdx.files.internal("click_crit.wav"));
         buySound      = Gdx.audio.newSound(Gdx.files.internal("buy.wav"));
         milestoneSound= Gdx.audio.newSound(Gdx.files.internal("milestone.wav"));
@@ -99,8 +111,18 @@ public class Assets {
 
         bgMusic = Gdx.audio.newMusic(Gdx.files.internal("music.mp3"));
         bgMusic.setLooping(true);
-        bgMusic.setVolume(0.35f);
+        bgMusic.setVolume(musicVolume);
         bgMusic.play();
+    }
+
+    public void playClickSound() {
+        if (clickSoundChoice == 0) clickNormal.play(soundVolume);
+        else if (clickSoundChoice == 1) clickPop.play(soundVolume);
+        else clickDing.play(soundVolume);
+    }
+
+    public void applyMusicVolume() {
+        bgMusic.setVolume(musicVolume);
     }
 
     Texture tex(String name) {
@@ -121,9 +143,11 @@ public class Assets {
         iconMine.dispose(); iconShip.dispose(); iconPortal.dispose();
         coinIcon.dispose(); critIcon.dispose(); milestoneIcon.dispose();
         prestige.dispose(); golden.dispose(); goldenGlow.dispose();
+        sliderBg.dispose(); sliderKnob.dispose();
         for (Texture t : sparkles) t.dispose();
         fontSmall.dispose(); fontMedium.dispose(); fontBig.dispose(); fontTitle.dispose();
-        clickNormal.dispose(); clickCrit.dispose(); buySound.dispose();
+        clickNormal.dispose(); clickPop.dispose(); clickDing.dispose();
+        clickCrit.dispose(); buySound.dispose();
         milestoneSound.dispose(); goldenSound.dispose();
         bgMusic.dispose();
     }

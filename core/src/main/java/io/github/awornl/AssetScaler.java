@@ -26,6 +26,9 @@ public class AssetScaler {
     static final int BAR_W      = BTN_W;
     static final int BAR_H      = 8;
     static final int STARS_MIN  = 128;
+    static final int SLIDER_W   = 300;
+    static final int SLIDER_H   = 16;
+    static final int KNOB       = 32;
 
     public static void scaleAll() {
         scale("bg.png",            BG_W,    BG_H);
@@ -63,6 +66,9 @@ public class AssetScaler {
         scale("sparkle2.png",      SPARKLE, SPARKLE);
         scale("sparkle3.png",      SPARKLE, SPARKLE);
         scale("sparkle4.png",      SPARKLE, SPARKLE);
+
+        scale("slider_bg.png",     SLIDER_W, SLIDER_H);
+        scale("slider_knob.png",   KNOB,     KNOB);
     }
 
     static void scale(String name, int targetW, int targetH) {
