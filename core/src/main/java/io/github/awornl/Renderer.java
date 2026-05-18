@@ -27,8 +27,9 @@ public class Renderer {
 
     float cookiePulseTimer = 0f;
 
-    Color colGold   = new Color(1f,   0.85f, 0.1f,  1f);
-    Color colSilver = new Color(0.8f, 0.8f,  0.9f,  1f);
+    Color colGold   = new Color(0.7f, 0.6f,  0.07f, 1f);
+
+    Color colSilver = new Color(0.55f, 0.55f, 0.62f, 1f);
     Color colFrenzy = new Color(1f,   0.3f,  0.05f, 1f);
     Color colGreen  = new Color(0.2f, 0.9f,  0.4f,  1f);
     Color colDimRed = new Color(0.8f, 0.3f,  0.3f,  1f);
