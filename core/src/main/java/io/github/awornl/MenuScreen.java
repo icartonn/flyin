@@ -125,8 +125,8 @@ public class MenuScreen extends InputAdapter {
         assets.fontSmall.draw(batch(), "Click sound:", clickSound0.x, clickSound0.y + 70f);
 
         drawClickSoundBtn(clickSound0, "Classic", 0);
-        drawClickSoundBtn(clickSound1, "Pop",     1);
-        drawClickSoundBtn(clickSound2, "Ding",    2);
+        drawClickSoundBtn(clickSound1, "Crunch",     1);
+        drawClickSoundBtn(clickSound2, "Pop",    2);
 
         drawBtn(backButton, "BACK");
     }

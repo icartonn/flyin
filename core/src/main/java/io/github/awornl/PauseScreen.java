@@ -99,8 +99,8 @@ public class PauseScreen {
         assets.fontSmall.draw(batch(), "Click sound:", clickSound0.x, clickSound0.y + 60f);
 
         drawClickSoundBtn(clickSound0, "Classic", 0);
-        drawClickSoundBtn(clickSound1, "Pop",     1);
-        drawClickSoundBtn(clickSound2, "Ding",    2);
+        drawClickSoundBtn(clickSound1, "Crunch",     1);
+        drawClickSoundBtn(clickSound2, "Pop",    2);
     }
 
     void drawBtn(Rectangle r, String text, Color color) {
