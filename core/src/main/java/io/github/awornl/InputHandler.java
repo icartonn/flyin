@@ -3,6 +3,7 @@ package io.github.awornl;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.math.Circle;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -34,6 +35,13 @@ public class InputHandler extends InputAdapter {
 
     float worldW, worldH;
 
+    public float scrollY = 0f;
+    float maxScroll = 0f;
+    boolean isDraggingPanel = false;
+    float lastTouchY = 0f;
+    float dragStartY = 0f;
+    boolean movedEnough = false;
+
     Vector3 touchVec = new Vector3();
 
     public InputHandler(GameState gameState, Assets assets, Viewport viewport, Main main) {
@@ -42,9 +50,10 @@ public class InputHandler extends InputAdapter {
         this.viewport  = viewport;
         this.main      = main;
 
-        int buildingCount = 6;
-        buyButtons        = new Rectangle[buildingCount];
-        buttonHoverTimers = new float[buildingCount];
+        int bCount = gameState.buildings.length;
+        buyButtons = new Rectangle[bCount];
+        buttonHoverTimers = new float[bCount];
+        for(int i=0; i<bCount; i++) buyButtons[i] = new Rectangle();
 
         worldW = Main.V_WIDTH;
         worldH = Main.V_HEIGHT;
@@ -52,34 +61,38 @@ public class InputHandler extends InputAdapter {
     }
 
     public void updateWorldSize(float newW, float newH) {
-        if (Math.abs(newW - worldW) > 0.5f || Math.abs(newH - worldH) > 0.5f) {
-            worldW = newW;
-            worldH = newH;
-            rebuildLayout();
-        }
+        worldW = newW;
+        worldH = newH;
+        rebuildLayout();
     }
 
     void rebuildLayout() {
         float panelRightX = worldW - PANEL_W;
-
-        float areaLeft  = PANEL_W;
-        float areaRight = panelRightX;
-        float cx = (areaLeft + areaRight) / 2f;
+        float cx = (PANEL_W + panelRightX) / 2f;
         float cy = worldH / 2f;
+
         cookieX = cx - cookieSize / 2f;
         cookieY = cy - cookieSize / 2f;
         cookieCircle = new Circle(cx, cy, cookieSize / 2f);
 
-        float startY = worldH - 170f;
-        for (int i = 0; i < buyButtons.length; i++) {
-            buyButtons[i] = new Rectangle(
-                panelRightX + 10f,
-                startY - i * (BTN_H + BTN_GAP),
-                BTN_W, BTN_H
-            );
-        }
-        prestigeButton = new Rectangle(panelRightX + 10f, 20f, BTN_W, 50f);
+        prestigeButton = new Rectangle(panelRightX - 210f, 20f, 200f, 50f);
         pauseButton    = new Rectangle(PANEL_W + 8f, worldH - PAUSE_BTN - 8f, PAUSE_BTN, PAUSE_BTN);
+
+        float pTop = worldH - 100f;
+        float pBottom = 20f;
+        float contentH = buyButtons.length * (BTN_H + BTN_GAP) - BTN_GAP;
+        maxScroll = Math.max(0, contentH - (pTop - pBottom));
+
+        scrollY = MathUtils.clamp(scrollY, 0, maxScroll);
+        updateButtons();
+    }
+
+    void updateButtons() {
+        float panelRightX = worldW - PANEL_W;
+        float startY = (worldH - 100f) + scrollY;
+        for (int i = 0; i < buyButtons.length; i++) {
+            buyButtons[i].set(panelRightX + 10f, startY - (i + 1) * (BTN_H + BTN_GAP) + BTN_GAP, BTN_W, BTN_H);
+        }
     }
 
     public void update(float delta) {
@@ -89,14 +102,12 @@ public class InputHandler extends InputAdapter {
             cookieSquish = 0.87f + p * 0.13f;
             if (cookieSquishTimer <= 0) cookieSquish = 1f;
         }
-
         for (int i = 0; i < buttonHoverTimers.length; i++) {
             if (buttonHoverTimers[i] > 0) buttonHoverTimers[i] -= delta;
         }
-
         touchVec.set(Gdx.input.getX(), Gdx.input.getY(), 0);
         viewport.unproject(touchVec);
-        cookieHovered = cookieCircle != null && cookieCircle.contains(touchVec.x, touchVec.y);
+        cookieHovered = cookieCircle.contains(touchVec.x, touchVec.y);
     }
 
     @Override
@@ -111,51 +122,29 @@ public class InputHandler extends InputAdapter {
             return true;
         }
 
-        if (pauseButton != null && pauseButton.contains(tx, ty)) {
-            assets.playClickSound();
-            main.setPaused(true);
+        if (tx > worldW - PANEL_W) {
+            isDraggingPanel = true;
+            lastTouchY = ty;
+            dragStartY = ty;
+            movedEnough = false;
             return true;
         }
-
-        if (cookieCircle != null && cookieCircle.contains(tx, ty)) {
-            gameState.clickCookie(tx, ty);
-            cookieSquishTimer = 0.12f;
-            assets.playClickSound();
-            return true;
-        }
-
-        if (gameState.goldenCookie.visible && gameState.goldenCookie.contains(tx, ty)) {
-            gameState.clickGoldenCookie();
-            assets.goldenSound.play(assets.soundVolume);
-            return true;
-        }
-
-        for (int i = 0; i < buyButtons.length; i++) {
-            if (buyButtons[i] != null && buyButtons[i].contains(tx, ty)) {
-                if (gameState.tryBuy(i)) {
-                    assets.buySound.play(assets.soundVolume);
-                    buttonHoverTimers[i] = 0.15f;
-                }
-                return true;
-            }
-        }
-
-        if (prestigeButton != null && prestigeButton.contains(tx, ty)) {
-            if (gameState.tryPrestige()) {
-                assets.milestoneSound.play(assets.soundVolume);
-            }
-            return true;
-        }
-
         return false;
     }
 
     @Override
     public boolean touchDragged(int screenX, int screenY, int pointer) {
-        if (main.isPaused()) {
-            touchVec.set(screenX, screenY, 0);
-            viewport.unproject(touchVec);
-            main.pauseScreen.touchDragged(touchVec.x, touchVec.y);
+        touchVec.set(screenX, screenY, 0);
+        viewport.unproject(touchVec);
+        float ty = touchVec.y;
+
+        if (isDraggingPanel) {
+            float dy = ty - lastTouchY;
+            scrollY += dy;
+            scrollY = MathUtils.clamp(scrollY, 0, maxScroll);
+            lastTouchY = ty;
+            updateButtons();
+            if (Math.abs(ty - dragStartY) > 20f) movedEnough = true;
             return true;
         }
         return false;
@@ -163,18 +152,65 @@ public class InputHandler extends InputAdapter {
 
     @Override
     public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-        if (main.isPaused()) {
-            main.pauseScreen.touchUp();
+        touchVec.set(screenX, screenY, 0);
+        viewport.unproject(touchVec);
+        if (isDraggingPanel) {
+            isDraggingPanel = false;
+            if (!movedEnough) handleClicks(touchVec.x, touchVec.y);
+            return true;
         }
+        handleClicks(touchVec.x, touchVec.y);
         return false;
     }
 
-    public float     getCookieX()           { return cookieX; }
-    public float     getCookieY()           { return cookieY; }
-    public float     getCookieSize()        { return cookieSize; }
-    public float     getWorldW()            { return worldW; }
-    public float     getWorldH()            { return worldH; }
-    public Rectangle[] getBuyButtons()      { return buyButtons; }
-    public Rectangle   getPrestigeButton()  { return prestigeButton; }
-    public Rectangle   getPauseButton()     { return pauseButton; }
+    private void handleClicks(float tx, float ty) {
+        if (pauseButton.contains(tx, ty)) {
+            assets.playClickSound();
+            main.setPaused(true);
+            return;
+        }
+        if (cookieCircle.contains(tx, ty)) {
+            gameState.clickCookie(tx, ty);
+            cookieSquishTimer = 0.12f;
+            assets.playClickSound();
+            return;
+        }
+        if (gameState.goldenCookie.visible && gameState.goldenCookie.contains(tx, ty)) {
+            gameState.clickGoldenCookie();
+            assets.goldenSound.play(assets.soundVolume);
+            return;
+        }
+
+        float pTop = worldH - 100f;
+        float pBottom = 20f;
+        for (int i = 0; i < buyButtons.length; i++) {
+            if (buyButtons[i].contains(tx, ty)) {
+                if (ty > pBottom && ty < pTop) {
+                    if (gameState.tryBuy(i)) {
+                        assets.buySound.play(assets.soundVolume);
+                        buttonHoverTimers[i] = 0.15f;
+                    }
+                }
+                return;
+            }
+        }
+        if (prestigeButton.contains(tx, ty)) {
+            if (gameState.tryPrestige()) assets.milestoneSound.play(assets.soundVolume);
+        }
+    }
+
+    @Override
+    public boolean scrolled(float amountX, float amountY) {
+        scrollY += amountY * 45f;
+        scrollY = MathUtils.clamp(scrollY, 0, maxScroll);
+        updateButtons();
+        return true;
+    }
+
+    public float getCookieX() { return cookieX; }
+    public float getCookieY() { return cookieY; }
+    public float getCookieSize() { return cookieSize; }
+    public Rectangle[] getBuyButtons() { return buyButtons; }
+    public Rectangle getPrestigeButton() { return prestigeButton; }
+    public Rectangle getPauseButton() { return pauseButton; }
 }

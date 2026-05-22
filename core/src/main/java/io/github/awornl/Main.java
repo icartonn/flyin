@@ -13,11 +13,9 @@ public class Main extends ApplicationAdapter {
 
     public static final int STATE_MENU    = 0;
     public static final int STATE_GAME    = 1;
-    public static final int STATE_GUIDE   = 2;
 
     int   currentState = STATE_MENU;
 
-    boolean guideCompleted = false;
     boolean paused = false;
 
     SpriteBatch     batch;
@@ -27,7 +25,7 @@ public class Main extends ApplicationAdapter {
     InputHandler    inputHandler;
     Assets          assets;
     MenuScreen      menuScreen;
-    GuideScreen     guideScreen;
+    TutorialManager tutorial;
     PauseScreen     pauseScreen;
 
     @Override
@@ -39,9 +37,6 @@ public class Main extends ApplicationAdapter {
         assets = new Assets();
         assets.loadAll();
 
-        Preferences prefs = Gdx.app.getPreferences("cookie_save");
-        guideCompleted = prefs.getBoolean("guideCompleted", false);
-
         menuScreen = new MenuScreen(assets, viewport, this);
         Gdx.input.setInputProcessor(menuScreen);
     }
@@ -50,12 +45,18 @@ public class Main extends ApplicationAdapter {
         if (gameState == null) {
             gameState = new GameState();
             Building[] buildings = new Building[]{
-                new Building("Cursor",  "Auto-clicks the cookie",     assets.iconCursor,   15L,     0.1),
-                new Building("Grandma", "Bakes cookies with love",    assets.iconGrandma,  100L,    0.8),
-                new Building("Mine",    "Mines cookie dough",         assets.iconMine,     500L,    4.0),
-                new Building("Factory", "Mass produces cookies",      assets.iconFactory,  3000L,   15.0),
-                new Building("Ship",    "Ships cookies across space", assets.iconShip,     20000L,  80.0),
-                new Building("Portal",  "Opens cookie dimension",     assets.iconPortal,   200000L, 500.0),
+                new Building("Cursor",      "Auto-clicks the cookie",      assets.iconCursor,     15L,             0.1),
+                new Building("Grandma",     "Bakes cookies with love",     assets.iconGrandma,    100L,            0.8),
+                new Building("Mine",        "Mines cookie dough",          assets.iconMine,       500L,            4.0),
+                new Building("Factory",     "Mass produces cookies",       assets.iconFactory,    3000L,           15.0),
+                new Building("Ship",        "Ships cookies across space",  assets.iconShip,       20000L,          80.0),
+                new Building("Portal",      "Opens cookie dimension",      assets.iconPortal,     200000L,         500.0),
+                new Building("Time Machine","Brings cookies from past",    assets.iconTime,       1200000L,        2200.0),
+                new Building("Antimatter",  "Condenses antimatter",        assets.iconAntimatter, 12000000L,       11000.0),
+                new Building("Prism",       "Light into cookies",          assets.iconPrism,      150000000L,      65000.0),
+                new Building("Chancemaker", "Generates luck",              assets.iconChance,     1800000000L,     420000.0),
+                new Building("Fractal",     "Cookies inside cookies",      assets.iconFractal,    25000000000L,    2800000.0),
+                new Building("Console",  "Code more cookies",           assets.iconJs,         310000000000L,   20000000.0),
             };
             gameState.setBuildings(buildings);
 
@@ -67,29 +68,23 @@ public class Main extends ApplicationAdapter {
             pauseScreen  = new PauseScreen(assets, viewport, this);
         }
 
-        if (!guideCompleted) {
-            currentState = STATE_GUIDE;
-            guideScreen  = new GuideScreen(assets, viewport, this);
-            Gdx.input.setInputProcessor(guideScreen);
+        Preferences prefs = Gdx.app.getPreferences("cookie_save");
+        boolean tutorialComplete = prefs.getBoolean("tutorialComplete", false);
+        if (!tutorialComplete) {
+            tutorial = new TutorialManager(assets.arrow);
         } else {
-            enterGame();
+            tutorial = null;
         }
+
+        Gdx.input.setInputProcessor(inputHandler);
+        currentState = STATE_GAME;
+        paused = false;
     }
 
     public void enterGame() {
         currentState = STATE_GAME;
         paused = false;
         Gdx.input.setInputProcessor(inputHandler);
-    }
-
-    public void completeGuide() {
-        guideCompleted = true;
-
-        Preferences prefs = Gdx.app.getPreferences("cookie_save");
-        prefs.putBoolean("guideCompleted", true);
-        prefs.flush();
-
-        enterGame();
     }
 
     public void goToMenu() {
@@ -110,7 +105,6 @@ public class Main extends ApplicationAdapter {
     @Override
     public void render() {
         float delta = Gdx.graphics.getDeltaTime();
-
         float worldW = viewport.getWorldWidth();
         float worldH = viewport.getWorldHeight();
 
@@ -121,8 +115,6 @@ public class Main extends ApplicationAdapter {
 
         if (currentState == STATE_MENU) {
             menuScreen.render(delta);
-        } else if (currentState == STATE_GUIDE) {
-            guideScreen.render(delta);
         } else {
             renderer.updateWorldSize(worldW, worldH);
             inputHandler.updateWorldSize(worldW, worldH);
@@ -131,16 +123,25 @@ public class Main extends ApplicationAdapter {
                 gameState.update(delta);
 
                 gameState.autoSaveTimer += delta;
-
                 if (gameState.autoSaveTimer >= 5f) {
                     gameState.autoSaveTimer = 0f;
                     gameState.save();
                 }
 
                 inputHandler.update(delta);
+                if (tutorial != null && !tutorial.isComplete()) {
+                    tutorial.update(delta, gameState, inputHandler);
+                    if (tutorial.isComplete()) {
+                        gameState.save();
+                    }
+                }
             }
 
             renderer.render(delta);
+
+            if (tutorial != null && !tutorial.isComplete()) {
+                tutorial.render(batch, assets, inputHandler, worldW, worldH);
+            }
 
             if (paused) {
                 pauseScreen.render(delta);
@@ -156,7 +157,6 @@ public class Main extends ApplicationAdapter {
         float ww = viewport.getWorldWidth();
         float wh = viewport.getWorldHeight();
         if (menuScreen  != null) menuScreen.resize();
-        if (guideScreen != null) guideScreen.resize();
         if (renderer    != null) renderer.updateWorldSize(ww, wh);
         if (inputHandler!= null) inputHandler.updateWorldSize(ww, wh);
         if (pauseScreen != null) pauseScreen.resize(ww, wh);
@@ -164,11 +164,8 @@ public class Main extends ApplicationAdapter {
 
     @Override
     public void dispose() {
-
-        if (gameState != null) {
-            gameState.save();
-        }
-
+        if (gameState != null) gameState.save();
+        if (assets != null) assets.saveSettings();
         batch.dispose();
         assets.disposeAll();
     }

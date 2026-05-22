@@ -4,22 +4,19 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 public class Renderer {
 
-    SpriteBatch  batch;
-    Assets       assets;
-    GameState    gameState;
+    SpriteBatch batch;
+    Assets      assets;
+    GameState   gameState;
+    Viewport    viewport;
     InputHandler inputHandler;
-    Viewport     viewport;
 
+    float worldW, worldH;
     static final float PANEL_W = 310f;
-
-    float worldW = Main.V_WIDTH;
-    float worldH = Main.V_HEIGHT;
 
     TextureRegion starsRegion;
     float         starsScrollV = 0f;
@@ -28,7 +25,6 @@ public class Renderer {
     float cookiePulseTimer = 0f;
 
     Color colGold   = new Color(0.7f, 0.6f,  0.07f, 1f);
-
     Color colSilver = new Color(0.55f, 0.55f, 0.62f, 1f);
     Color colFrenzy = new Color(1f,   0.3f,  0.05f, 1f);
     Color colGreen  = new Color(0.2f, 0.9f,  0.4f,  1f);
@@ -40,9 +36,10 @@ public class Renderer {
         this.gameState= gameState;
         this.viewport = viewport;
 
-        assets.bgStars.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-
-        starsRegion = new TextureRegion(assets.bgStars);
+        if (assets.bgStars != null) {
+            assets.bgStars.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
+            starsRegion = new TextureRegion(assets.bgStars);
+        }
 
         com.badlogic.gdx.graphics.Pixmap px = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
         px.setColor(1, 1, 1, 1);
@@ -61,9 +58,11 @@ public class Renderer {
     public void render(float delta) {
         cookiePulseTimer += delta;
 
-        int texH = assets.bgStars.getHeight();
-        starsScrollV += (20f / texH) * delta;
-        if (starsScrollV > 1f) starsScrollV -= 1f;
+        if (assets.bgStars != null) {
+            int texH = assets.bgStars.getHeight();
+            starsScrollV += (20f / texH) * delta;
+            if (starsScrollV > 1f) starsScrollV -= 1f;
+        }
 
         drawBackground();
         drawCookieArea();
@@ -73,67 +72,58 @@ public class Renderer {
         drawFloatingTexts();
         drawGoldenCookie();
         drawMilestonePopup();
+        drawAchievementPopup();
         drawFrenzyOverlay();
         drawPauseButton();
     }
 
     void drawBackground() {
         batch.setColor(1, 1, 1, 1);
-        batch.draw(assets.bg, 0, 0, worldW, worldH);
+        if (assets.bg != null) batch.draw(assets.bg, 0, 0, worldW, worldH);
 
-        int texW = assets.bgStars.getWidth();
-        int texH = assets.bgStars.getHeight();
-
-        float repeatX = worldW / texW;
-        float repeatY = worldH / texH;
-
-        starsRegion.setRegion(
-            0f,
-            starsScrollV,
-            repeatX,
-            starsScrollV + repeatY
-        );
-
-        batch.setColor(1, 1, 1, 0.9f);
-        batch.draw(starsRegion, 0, 0, worldW, worldH);
+        if (starsRegion != null) {
+            float repeatX = worldW / assets.bgStars.getWidth();
+            float repeatY = worldH / assets.bgStars.getHeight();
+            starsRegion.setRegion(0f, starsScrollV, repeatX, starsScrollV + repeatY);
+            batch.setColor(1, 1, 1, 0.9f);
+            batch.draw(starsRegion, 0, 0, worldW, worldH);
+        }
         batch.setColor(1, 1, 1, 1);
     }
 
     void drawCookieArea() {
         if (inputHandler == null) return;
-
-        float cx   = inputHandler.getCookieX();
-        float cy   = inputHandler.getCookieY();
+        float cx = inputHandler.getCookieX();
+        float cy = inputHandler.getCookieY();
         float size = inputHandler.getCookieSize();
         float midX = cx + size / 2f;
         float midY = cy + size / 2f;
 
-        float glowSize  = size * 1.55f;
         float glowPulse = (float)(Math.sin(cookiePulseTimer * 2f) * 0.07f + 0.93f);
-        float gs        = glowSize * glowPulse;
+        float gs = size * 1.55f * glowPulse;
 
-        if (gameState.goldenFrenzy)
-            batch.setColor(colFrenzy.r, colFrenzy.g, colFrenzy.b, 0.5f);
-        else
-            batch.setColor(colGold.r, colGold.g, colGold.b, 0.32f);
+        if (gameState.goldenFrenzy) batch.setColor(colFrenzy.r, colFrenzy.g, colFrenzy.b, 0.5f);
+        else batch.setColor(colGold.r, colGold.g, colGold.b, 0.32f);
 
-        batch.draw(assets.cookieGlow, midX - gs / 2f, midY - gs / 2f, gs, gs);
+        if (assets.cookieGlow != null) {
+            batch.draw(assets.cookieGlow, midX - gs / 2f, midY - gs / 2f, gs, gs);
+        }
 
-        float squish = inputHandler.cookieSquish;
-        float hover  = inputHandler.cookieHovered ? 1.04f : 1f;
-        float drawW  = size * squish * hover;
-        float drawH  = size * (2f - squish) * hover;
-
+        float hover = inputHandler.cookieHovered ? 1.04f : 1f;
+        float dw = size * inputHandler.cookieSquish * hover;
+        float dh = size * (2f - inputHandler.cookieSquish) * hover;
         batch.setColor(1, 1, 1, 1);
-        batch.draw(assets.cookie, midX - drawW / 2f, midY - drawH / 2f, drawW, drawH);
+        if (assets.cookie != null) {
+            batch.draw(assets.cookie, midX - dw / 2f, midY - dh / 2f, dw, dh);
+        }
     }
 
     void drawLeftPanel() {
         batch.setColor(0.05f, 0.04f, 0.12f, 0.93f);
-        batch.draw(assets.panelLeft, 0, 0, PANEL_W, worldH);
+        batch.draw(assets.panelLeft != null ? assets.panelLeft : whitePx, 0, 0, PANEL_W, worldH);
         batch.setColor(1, 1, 1, 1);
 
-        float px   = 16f;
+        float px = 16f;
         float topY = worldH - 22f;
 
         assets.fontTitle.setColor(colGold);
@@ -143,8 +133,8 @@ public class Renderer {
         assets.fontMedium.draw(batch, gameState.formatCookies(gameState.cookies) + " cookies", px, topY - 48f);
 
         assets.fontSmall.setColor(colSilver);
-        assets.fontSmall.draw(batch, "per sec:   " + gameState.formatCps(gameState.cookiesPerSecond),    px, topY - 78f);
-        assets.fontSmall.draw(batch, "per click: " + gameState.formatCookies(gameState.cookiesPerClick), px, topY - 100f);
+        assets.fontSmall.draw(batch, "per sec:   " + gameState.formatCps(gameState.cookiesPerSecond), px, topY - 78f);
+        assets.fontSmall.draw(batch, "per click: " + gameState.formatCookies((double)gameState.cookiesPerClick), px, topY - 100f);
 
         float ey = topY - 135f;
         assets.fontSmall.setColor(colGold);
@@ -154,10 +144,7 @@ public class Renderer {
 
         if (gameState.prestigeLevel > 0) {
             assets.fontSmall.setColor(new Color(0.85f, 0.55f, 1f, 1f));
-            assets.fontSmall.draw(batch,
-                "Prestige x" + gameState.prestigeLevel +
-                    "  (+" + (int)((gameState.prestigeBonus - 1f) * 100) + "%)",
-                px, ey - 60f);
+            assets.fontSmall.draw(batch, "Prestige x" + gameState.prestigeLevel + " (+" + (int)((gameState.prestigeBonus - 1f) * 100) + "%)", px, ey - 60f);
         }
 
         drawMilestoneList(px, ey - 105f);
@@ -170,7 +157,7 @@ public class Renderer {
         for (Milestone m : gameState.milestones) {
             if (m.unlocked) {
                 batch.setColor(1, 1, 1, 1);
-                batch.draw(assets.milestoneIcon, x, y - 16f, 18f, 18f);
+                if (assets.milestoneIcon != null) batch.draw(assets.milestoneIcon, x, y - 16f, 18f, 18f);
                 assets.fontSmall.setColor(colGreen);
                 assets.fontSmall.draw(batch, m.title, x + 24f, y);
             } else {
@@ -184,199 +171,165 @@ public class Renderer {
 
     void drawRightPanel() {
         float panelX = worldW - PANEL_W;
-
         batch.setColor(0.05f, 0.04f, 0.12f, 0.93f);
-        batch.draw(assets.panelRight, panelX, 0, PANEL_W, worldH);
+        batch.draw(assets.panelRight != null ? assets.panelRight : whitePx, panelX, 0, PANEL_W, worldH);
         batch.setColor(1, 1, 1, 1);
+
+        if (inputHandler == null) return;
+
+        drawPrestigeButton(inputHandler.getPrestigeButton());
 
         assets.fontTitle.setColor(colGold);
         assets.fontTitle.draw(batch, "UPGRADES", panelX + 16f, worldH - 22f);
 
-        if (inputHandler == null) return;
+        float clipTop = worldH - 90f;
+        float clipBottom = 20f;
 
         Rectangle[] btns = inputHandler.getBuyButtons();
         for (int i = 0; i < gameState.buildings.length; i++) {
-            drawBuildingButton(btns[i], gameState.buildings[i], i);
+            Rectangle r = btns[i];
+            if (r.y + r.height > clipBottom && r.y < clipTop) {
+                drawBuildingButton(r, gameState.buildings[i], i);
+            }
         }
-        drawPrestigeButton(inputHandler.getPrestigeButton());
     }
 
     void drawBuildingButton(Rectangle r, Building b, int idx) {
-        boolean canAfford  = gameState.cookies >= b.currentCost;
-        boolean justBought = inputHandler.buttonHoverTimers[idx] > 0;
+        boolean canAfford = gameState.cookies >= b.currentCost;
 
-        if (justBought)
-            batch.setColor(1f, 1f, 0.45f, 1f);
-        else if (canAfford)
-            batch.setColor(0.14f, 0.52f, 0.24f, 1f);
-        else
-            batch.setColor(0.24f, 0.14f, 0.19f, 1f);
+        if (inputHandler.buttonHoverTimers[idx] > 0) batch.setColor(1f, 1f, 0.45f, 1f);
+        else if (canAfford) batch.setColor(0.14f, 0.52f, 0.24f, 1f);
+        else batch.setColor(0.24f, 0.14f, 0.19f, 1f);
 
-        batch.draw(canAfford ? assets.buttonNormal : assets.buttonLocked,
-            r.x, r.y, r.width, r.height);
+        Texture btnTex = canAfford ? assets.buttonNormal : assets.buttonLocked;
+        batch.draw(btnTex != null ? btnTex : whitePx, r.x, r.y, r.width, r.height);
 
         batch.setColor(1, 1, 1, 1);
         float iconSize = 52f;
-        batch.draw(b.icon, r.x + 8f, r.y + (r.height - iconSize) / 2f, iconSize, iconSize);
+        Texture iconTex = b.icon != null ? b.icon : assets.whitePixel;
+        batch.draw(iconTex != null ? iconTex : whitePx, r.x + 8f, r.y + (r.height - iconSize) / 2f, iconSize, iconSize);
 
         assets.fontMedium.setColor(Color.WHITE);
         assets.fontMedium.draw(batch, b.name + " (" + b.count + ")", r.x + 68f, r.y + r.height - 14f);
 
         assets.fontSmall.setColor(canAfford ? colGold : colDimRed);
-        assets.fontSmall.draw(batch, gameState.formatCookies(b.currentCost), r.x + 68f, r.y + r.height - 36f);
+        assets.fontSmall.draw(batch, gameState.formatCookies((double)b.currentCost), r.x + 68f, r.y + r.height - 36f);
 
         assets.fontSmall.setColor(colSilver);
-        String cpsStr = b.baseCps >= 1
-            ? gameState.formatCps(b.baseCps) + "/s"
-            : String.format("%.2f/s", b.baseCps);
-        assets.fontSmall.draw(batch, cpsStr + " each", r.x + 68f, r.y + r.height - 56f);
-
-        drawProgressBar(r.x + 8f, r.y + 4f, r.width - 16f, 5f, b);
-    }
-
-    void drawProgressBar(float x, float y, float w, float h, Building b) {
-        long prevCost = b.count == 0
-            ? 0L
-            : (long)(b.baseCost * Math.pow(1.15, b.count - 1));
-        long nextCost = b.currentCost;
-        long range    = nextCost - prevCost;
-        float progress = 0f;
-        if (range > 0 && gameState.cookies < nextCost) {
-            progress = (float)(gameState.cookies - prevCost) / (float)range;
-            progress = MathUtils.clamp(progress, 0f, 1f);
-        } else if (gameState.cookies >= nextCost) {
-            progress = 1f;
-        }
-
-        batch.setColor(0.14f, 0.1f, 0.2f, 1f);
-        batch.draw(assets.progressBarBg, x, y, w, h);
-        if (progress > 0.01f) {
-            batch.setColor(colGold);
-            batch.draw(assets.progressBarFill, x, y, w * progress, h);
-        }
-        batch.setColor(1, 1, 1, 1);
+        String cpsStr = b.baseCps >= 1 ? gameState.formatCps(b.baseCps) : String.format("%.2f/s", b.baseCps);
+        assets.fontSmall.draw(batch, cpsStr + (b.baseCps >= 1 ? "/s each" : " each"), r.x + 68f, r.y + r.height - 56f);
     }
 
     void drawPrestigeButton(Rectangle r) {
+        if (r == null) return;
         boolean can = gameState.totalCookiesEarned >= gameState.getPrestigeCost();
 
-        batch.setColor(can
-            ? new Color(0.58f, 0.1f, 0.78f, 1f)
-            : new Color(0.18f, 0.1f, 0.28f, 0.85f));
-        batch.draw(can ? assets.buttonNormal : assets.buttonLocked, r.x, r.y, r.width, r.height);
+        batch.setColor(can ? new Color(0.58f, 0.1f, 0.78f, 1f) : new Color(0.18f, 0.1f, 0.28f, 0.85f));
+        Texture btnTex = can ? assets.buttonNormal : assets.buttonLocked;
+        batch.draw(btnTex != null ? btnTex : whitePx, r.x, r.y, r.width, r.height);
 
         batch.setColor(1, 1, 1, 1);
-        batch.draw(assets.prestige, r.x + 6f, r.y + 8f, 30f, 30f);
+        if (assets.prestige != null) batch.draw(assets.prestige, r.x + 6f, r.y + 8f, 30f, 30f);
 
-        Color textColor = can ? new Color(0.9f, 0.5f, 1f, 1f) : new Color(0.5f, 0.38f, 0.6f, 1f);
-        assets.fontSmall.setColor(textColor);
-        assets.fontSmall.draw(batch,
-            "PRESTIGE (need " + gameState.formatCookies(gameState.getPrestigeCost()) + ")",
-            r.x + 42f, r.y + 33f);
-        assets.fontSmall.setColor(colSilver);
-        assets.fontSmall.draw(batch, "Resets game, +25% permanent", r.x + 42f, r.y + 14f);
+        assets.fontSmall.setColor(can ? new Color(0.9f, 0.5f, 1f, 1f) : colSilver);
+        assets.fontSmall.draw(batch, "PRESTIGE", r.x + 42f, r.y + 33f);
     }
 
     void drawParticles() {
         for (Particle p : gameState.particles) {
             batch.setColor(p.color);
-            Texture t = assets.sparkles[p.texIndex];
-            batch.draw(t,
-                p.x - p.size / 2f, p.y - p.size / 2f,
-                p.size / 2f,       p.size / 2f,
-                p.size,            p.size,
-                1f, 1f,            p.rotation,
-                0, 0,              t.getWidth(), t.getHeight(),
-                false, false);
+            if (assets.sparkles != null && p.texIndex < assets.sparkles.length) {
+                Texture t = assets.sparkles[p.texIndex];
+                if (t != null) batch.draw(t, p.x - p.size/2f, p.y - p.size/2f, p.size, p.size);
+            }
         }
         batch.setColor(1, 1, 1, 1);
     }
 
     void drawFloatingTexts() {
         for (FloatingText ft : gameState.floatingTexts) {
-            assets.fontBig.getData().setScale(ft.size);
             assets.fontBig.setColor(ft.color.r, ft.color.g, ft.color.b, ft.alpha);
             assets.fontBig.draw(batch, ft.text, ft.x, ft.y);
         }
-        assets.fontBig.getData().setScale(1f);
         assets.fontBig.setColor(Color.WHITE);
     }
 
     void drawGoldenCookie() {
         GoldenCookie gc = gameState.goldenCookie;
-        if (!gc.visible) return;
-
-        float gs = gc.size * 1.8f;
-        batch.setColor(colGold.r, colGold.g, colGold.b, gc.glowAlpha * gc.getAlpha() * 0.7f);
-        batch.draw(assets.goldenGlow,
-            gc.x + gc.size / 2f - gs / 2f,
-            gc.y + gc.size / 2f - gs / 2f,
-            gs, gs);
-
+        if (gc == null || !gc.visible) return;
         batch.setColor(1, 1, 1, gc.getAlpha());
-        batch.draw(assets.golden, gc.x, gc.y, gc.size, gc.size);
+        if (assets.golden != null) batch.draw(assets.golden, gc.x, gc.y, gc.size, gc.size);
         batch.setColor(1, 1, 1, 1);
-
-        assets.fontSmall.setColor(colGold.r, colGold.g, colGold.b, gc.getAlpha());
-        assets.fontSmall.draw(batch, String.format("%.0fs", gc.lifeTimer),
-            gc.x + gc.size / 2f - 10f, gc.y - 5f);
-        assets.fontSmall.setColor(Color.WHITE);
     }
 
     void drawMilestonePopup() {
         Milestone m = gameState.activeMilestone;
         if (m == null) return;
-
-        float popW = 380f;
-        float popH = 72f;
-        float popX = worldW / 2f - popW / 2f;
-        float popY = worldH - 105f;
         float alpha = Math.min(1f, m.showTimer);
+        float bx = worldW/2f - 190f;
+        float by = worldH - 105f;
 
         batch.setColor(0.08f, 0.06f, 0.18f, alpha * 0.95f);
-        batch.draw(assets.buttonNormal, popX, popY, popW, popH);
+        batch.draw(assets.buttonNormal != null ? assets.buttonNormal : whitePx, bx, by, 380f, 72f);
+
         batch.setColor(1, 1, 1, alpha);
-        batch.draw(assets.milestoneIcon, popX + 12f, popY + popH / 2f - 18f, 36f, 36f);
+        if (assets.milestoneIcon != null) batch.draw(assets.milestoneIcon, bx + 12f, by + 12f, 48f, 48f);
 
         assets.fontMedium.setColor(colGold.r, colGold.g, colGold.b, alpha);
-        assets.fontMedium.draw(batch, m.title, popX + 58f, popY + popH - 12f);
-        assets.fontSmall.setColor(1f, 1f, 1f, alpha * 0.8f);
-        assets.fontSmall.draw(batch, m.description, popX + 58f, popY + popH - 36f);
-
+        assets.fontMedium.draw(batch, m.title, bx + 75f, by + 52f);
+        assets.fontSmall.setColor(1, 1, 1, alpha * 0.8f);
+        assets.fontSmall.draw(batch, "Milestone Unlocked!", bx + 75f, by + 24f);
         batch.setColor(1, 1, 1, 1);
-        assets.fontMedium.setColor(Color.WHITE);
-        assets.fontSmall.setColor(Color.WHITE);
+    }
+
+    void drawAchievementPopup() {
+        Achievement a = gameState.activeAchievement;
+        if (a == null) return;
+        float alpha = Math.min(1f, a.showTimer);
+        float bx = worldW/2f - 190f;
+        float by = worldH - 185f;
+
+        batch.setColor(0.05f, 0.15f, 0.1f, alpha * 0.95f);
+        batch.draw(assets.buttonNormal != null ? assets.buttonNormal : whitePx, bx, by, 380f, 72f);
+
+        batch.setColor(1, 1, 1, alpha);
+        Texture icon = assets.milestoneIcon;
+        if (a.type == 2 && a.buildingIndex >= 0 && a.buildingIndex < gameState.buildings.length) {
+            icon = gameState.buildings[a.buildingIndex].icon;
+        } else if (a.type == 1) icon = assets.iconCursor;
+        else if (a.type == 3) icon = assets.prestige;
+
+        if (icon != null) batch.draw(icon, bx + 12f, by + 12f, 48f, 48f);
+
+        assets.fontMedium.setColor(colGreen.r, colGreen.g, colGreen.b, alpha);
+        assets.fontMedium.draw(batch, a.title, bx + 75f, by + 52f);
+        assets.fontSmall.setColor(1, 1, 1, alpha * 0.8f);
+        assets.fontSmall.draw(batch, "Achievement Unlocked!", bx + 75f, by + 24f);
+        batch.setColor(1, 1, 1, 1);
     }
 
     void drawFrenzyOverlay() {
         if (!gameState.goldenFrenzy) return;
-
-        float pulse = (float)(Math.sin(cookiePulseTimer * 10f) * 0.04f + 0.07f);
-        batch.setColor(colFrenzy.r, colFrenzy.g, colFrenzy.b, pulse);
-        batch.draw(assets.bg, 0, 0, worldW, worldH);
-        batch.setColor(1, 1, 1, 1);
-
-        assets.fontBig.getData().setScale(1.5f);
         assets.fontBig.setColor(colFrenzy);
-        String msg = "FRENZY x7!  " + String.format("%.0fs", gameState.goldenFrenzyTimer);
-        assets.fontBig.draw(batch, msg, worldW / 2f - 130f, worldH - 28f);
-        assets.fontBig.getData().setScale(1f);
+        assets.fontBig.draw(batch, "FRENZY x7!", worldW/2f - 80f, worldH - 28f);
         assets.fontBig.setColor(Color.WHITE);
     }
 
     void drawPauseButton() {
         if (inputHandler == null) return;
-        com.badlogic.gdx.math.Rectangle r = inputHandler.getPauseButton();
+        Rectangle r = inputHandler.getPauseButton();
         if (r == null) return;
-        float s = r.width;
         batch.setColor(0.1f, 0.08f, 0.22f, 0.85f);
-        batch.draw(whitePx, r.x, r.y, s, s);
-        batch.setColor(colSilver);
-        float barW = 5f;
-        float barH = s * 0.45f;
-        float barY = r.y + (s - barH) / 2f;
-        batch.draw(whitePx, r.x + s * 0.28f, barY, barW, barH);
-        batch.draw(whitePx, r.x + s * 0.56f, barY, barW, barH);
+        batch.draw(whitePx, r.x, r.y, r.width, r.height);
+
+        batch.setColor(1, 1, 1, 0.9f);
+        float bw = r.width * 0.18f;
+        float bh = r.height * 0.45f;
+        float space = r.width * 0.12f;
+        float x1 = r.x + (r.width - (bw * 2 + space)) / 2f;
+        float y = r.y + (r.height - bh) / 2f;
+        batch.draw(whitePx, x1, y, bw, bh);
+        batch.draw(whitePx, x1 + bw + space, y, bw, bh);
         batch.setColor(1, 1, 1, 1);
     }
 }
