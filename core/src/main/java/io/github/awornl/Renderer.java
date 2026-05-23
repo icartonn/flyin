@@ -73,6 +73,7 @@ public class Renderer {
         drawGoldenCookie();
         drawMilestonePopup();
         drawAchievementPopup();
+        drawOfflineIncomePopup();
         drawFrenzyOverlay();
         drawPauseButton();
     }
@@ -305,6 +306,25 @@ public class Renderer {
         assets.fontMedium.draw(batch, a.title, bx + 75f, by + 52f);
         assets.fontSmall.setColor(1, 1, 1, alpha * 0.8f);
         assets.fontSmall.draw(batch, "Achievement Unlocked!", bx + 75f, by + 24f);
+        batch.setColor(1, 1, 1, 1);
+    }
+
+    void drawOfflineIncomePopup() {
+        if (gameState.offlinePopupTimer <= 0) return;
+        float alpha = Math.min(1f, gameState.offlinePopupTimer);
+        float bx = worldW/2f - 200f;
+        float by = worldH/2f - 50f;
+
+        batch.setColor(0.1f, 0.1f, 0.2f, alpha * 0.9f);
+        batch.draw(assets.buttonNormal != null ? assets.buttonNormal : whitePx, bx, by, 400f, 100f);
+
+        batch.setColor(1, 1, 1, alpha);
+        assets.fontMedium.setColor(colGold.r, colGold.g, colGold.b, alpha);
+        assets.fontMedium.draw(batch, "Welcome back!", bx + 20f, by + 80f);
+
+        assets.fontSmall.setColor(Color.WHITE.r, Color.WHITE.g, Color.WHITE.b, alpha);
+        assets.fontSmall.draw(batch, "While you were away, you earned:", bx + 20f, by + 50f);
+        assets.fontSmall.draw(batch, gameState.formatCookies(gameState.offlineIncomeEarned) + " cookies", bx + 20f, by + 25f);
         batch.setColor(1, 1, 1, 1);
     }
 

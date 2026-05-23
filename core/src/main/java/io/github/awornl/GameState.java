@@ -36,6 +36,9 @@ public class GameState {
     public Milestone activeMilestone = null;
     public Achievement activeAchievement = null;
 
+    public double offlineIncomeEarned = 0;
+    public float offlinePopupTimer = 0f;
+
     public GameState() {
         goldenCookie = new GoldenCookie();
         initMilestones();
@@ -90,6 +93,10 @@ public class GameState {
         for (int i = particles.size - 1; i >= 0; i--) {
             particles.get(i).update(delta);
             if (particles.get(i).isDead()) particles.removeIndex(i);
+        }
+
+        if (offlinePopupTimer > 0) {
+            offlinePopupTimer -= delta;
         }
 
         checkMilestones(delta);
@@ -232,6 +239,7 @@ public class GameState {
         prefs.putLong("cookiesPerClick", cookiesPerClick);
         prefs.putInteger("prestigeLevel", prestigeLevel);
         prefs.putFloat("prestigeBonus", prestigeBonus);
+        prefs.putLong("lastSaveTime", System.currentTimeMillis());
         if (buildings != null) {
             prefs.putInteger("buildings_count", buildings.length);
             for (int i = 0; i < buildings.length; i++) {
@@ -263,5 +271,17 @@ public class GameState {
         }
         updateCps();
         updateClickPower();
+
+        long lastSave = prefs.getLong("lastSaveTime", 0);
+        if (lastSave > 0 && cookiesPerSecond > 0) {
+            long now = System.currentTimeMillis();
+            long seconds = (now - lastSave) / 1000;
+            if (seconds > 60) {
+                double earned = seconds * cookiesPerSecond * prestigeBonus;
+                offlineIncomeEarned = earned;
+                addCookies(earned);
+                offlinePopupTimer = 5f;
+            }
+        }
     }
 }

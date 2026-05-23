@@ -152,6 +152,11 @@ public class Main extends ApplicationAdapter {
     }
 
     @Override
+    public void pause() {
+        if (gameState != null) gameState.save();
+    }
+
+    @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
         float ww = viewport.getWorldWidth();
